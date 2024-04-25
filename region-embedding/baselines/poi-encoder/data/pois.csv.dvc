@@ -1,0 +1,5 @@
+outs:
+- md5: 73666a4ae5c57e2add39ffe19bff2afe
+  size: 114380867
+  hash: md5
+  path: pois.csv

@@ -1,0 +1,5 @@
+outs:
+- md5: d047a62ed82a37e1161564cee537a448
+  size: 387272766
+  hash: md5
+  path: second_class_walks.pkl

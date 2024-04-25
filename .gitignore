@@ -6,6 +6,10 @@
 *.geoparquet
 **/util/cache/*
 **/util/files/*
+*.tensor
+**/data/*.csv
+**/data/*.pkl
+**/data/*.tensor
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

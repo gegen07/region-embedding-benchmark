@@ -1,0 +1,5 @@
+outs:
+- md5: 02002ef5282d61bb547bb83bc0ab7966
+  size: 1662904
+  hash: md5
+  path: region_embedding.csv

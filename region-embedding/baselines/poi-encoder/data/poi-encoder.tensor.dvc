@@ -1,0 +1,5 @@
+outs:
+- md5: c9106f49d8dc28fb4a239cc68157232a
+  size: 268860
+  hash: md5
+  path: poi-encoder.tensor
