@@ -90,7 +90,7 @@ class QuackosmData():
 
 
 def main():
-    from filters import HEX2VEC_FILTER
+    from filters import HEX2VEC_FILTER, REDUCED_FILTER
     quack = QuackosmData("/media/gegen07/Expansion/data/mestrado/region-embedding/new-york-latest.osm.pbf")
     
     pois = quack.get_pois_osm(HEX2VEC_FILTER)
