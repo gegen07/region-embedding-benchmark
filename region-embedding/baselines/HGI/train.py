@@ -19,7 +19,7 @@ import os
 def parse_args():
     """ parsing the arguments that are used in HGI """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--city', type=str, default='shenzhen', help='city name, such as shenzhen')
+    parser.add_argument('--city', type=str, default='ny', help='city name, such as shenzhen')
     parser.add_argument('--dim', type=int, default=64, help='Dimension of output representation')
     parser.add_argument('--alpha', type=float, default=0.5, help='the hyperparameter to balance mutual information')
     parser.add_argument('--attention_head', type=int, default=4)
@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument('--warmup_period', type=int, default=40)
     parser.add_argument('--epoch', type=int, default=2000)
     parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--save_name', type=str, default='shenzhen_emb')
+    parser.add_argument('--save_name', type=str, default='ny_emb')
     return parser.parse_args()
 
 
@@ -76,8 +76,8 @@ if __name__ == '__main__':
             region_emb_to_save = model.get_region_emb()
             lowest_loss = loss
         t.set_postfix(loss='{:.4f}'.format(loss), refresh=True)
-    torch.save(region_emb_to_save, f'./Emb/{args.save_name}')
-    print(f"Region embeddings of {args.city} has been save to ./Emb/{args.save_name}")
+    torch.save(region_emb_to_save, f'./data/{args.save_name}.torch')
+    print(f"Region embeddings of {args.city} has been save to ./data/{args.save_name}")
 
 
 

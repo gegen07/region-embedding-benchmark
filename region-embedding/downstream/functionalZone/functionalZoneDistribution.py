@@ -8,13 +8,13 @@ from scipy.spatial.distance import canberra, chebyshev
 
 class FunctionZoneDataset(Dataset):
 
-    def __init__(self, csv_file_features, csv_file_labels):
+    def __init__(self, csv_file_features, csv_file_labels, column_id):
         self.features = pd.read_csv(csv_file_features)
         self.labels = pd.read_csv(csv_file_labels)
 
-        boroughs = self.labels['BoroCT2020'].unique().tolist()
+        boroughs = self.labels[column_id].unique().tolist()
 
-        self.features = self.features[self.features['BoroCT2020'].isin(boroughs)]
+        self.features = self.features[self.features[column_id].isin(boroughs)]
 
 
     def __len__(self):
@@ -24,8 +24,8 @@ class FunctionZoneDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        features = self.features.iloc[idx, 1:].values
-        labels = self.labels.iloc[idx, 1:].values
+        features = self.features.iloc[idx, 1:].values.flatten().astype('float32')
+        labels = self.labels.iloc[idx, 1:].values.flatten().astype('float32')
 
         return {'features': torch.from_numpy(features), 'labels': torch.from_numpy(labels)}
 
@@ -36,19 +36,25 @@ zone_list = []
 ground_truth_file = "./data/nyc-landuse.csv"
 region_embedding_file = '../../baselines/poi-encoder/data/region_embedding.csv'
 
-function_zone_dataset = FunctionZoneDataset(region_embedding_file, ground_truth_file)
+column_id = 'BoroCT2020'
+# column_id = 'region_id'
+
+function_zone_dataset = FunctionZoneDataset(region_embedding_file, ground_truth_file, column_id)
 
 embedding_size = 64
 
 class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.lin0 = torch.nn.Linear(embedding_size, 32)
-        self.lin1 = torch.nn.Linear(32, 11)
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(embedding_size, 512),
+            torch.nn.Sigmoid(),
+            torch.nn.Linear(512, 11),
+            torch.nn.Softmax(dim=-1)
+        )
 
     def forward(self, x):
-        out = torch.tanh(self.lin0(x.float())).float()
-        out = F.softmax(self.lin1(out), -1).float()
+        out = self.net(x.float())
         return out.view(-1).float()
 
 
@@ -110,7 +116,7 @@ test_loader = DataLoader(test_set, batch_size=1, shuffle=False, num_workers=0)
 train_loader = DataLoader(train_set, batch_size=training_batch_size, shuffle=False, num_workers=0)
 
 model = Net().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
 
 for epoch in range(100):
 

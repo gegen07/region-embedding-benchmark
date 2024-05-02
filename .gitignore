@@ -10,6 +10,15 @@
 **/data/*.csv
 **/data/*.pkl
 **/data/*.tensor
+**/*.npy
+**/*.npz
+**/*.pbf
+**/osmconvert
+**/cache/*
+**/lightning_logs/*
+!**/region_embedding.csv
+!**/ny_geovex_emb.csv
+!**/ny_hex2vec_emb.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

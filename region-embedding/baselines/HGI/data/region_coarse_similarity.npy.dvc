@@ -1,0 +1,5 @@
+outs:
+- md5: 1683fefa07b6f9d622df446f005114cf
+  size: 43245128
+  hash: md5
+  path: region_coarse_similarity.npy

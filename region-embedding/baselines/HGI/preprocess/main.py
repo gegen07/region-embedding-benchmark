@@ -10,6 +10,8 @@ from sklearn.preprocessing import LabelEncoder
 import torch
 
 import numpy as np
+import pickle as pkl
+import os
 
 class Preprocess():
     def __init__(self, pois_filename, boroughs_filename, edges_filename, emb_filename) -> None:
@@ -36,7 +38,7 @@ class Preprocess():
         emb = torch.load(self.embedding_filename)['in_embed.weight'] ## TODO: change this in_embed.weight to general way of reading the embedding
         self.pois['embedding'] = self.pois['fclass'].apply(lambda x: list(np.array(emb[x])))
         self.embedding_array = self.pois['embedding'].values.tolist()
-        print(self.embedding_array)
+        # print(self.embedding_array)
 
     def _read_edges(self):
         self.edges = pd.read_csv(self.edges_filename)
@@ -51,6 +53,10 @@ class Preprocess():
     
     def _get_coarse_region_similarity(self):
         from sklearn.metrics.pairwise import cosine_similarity
+
+        if os.path.exists('../data/region_coarse_similarity.npy'):
+            self.region_coarse_similarity = np.load('../data/region_coarse_similarity.npy')
+            return
 
         onehot = self.pois[['index_right', 'fclass']]
         onehot = pd.concat([onehot[['index_right']],pd.get_dummies(onehot['fclass'], dtype=int)], axis=1)
@@ -67,6 +73,9 @@ class Preprocess():
                 else:
                     sim = 1
                 self.region_coarse_similarity[x, y] = sim
+
+        with open('../data/region_coarse_similarity.npy', 'wb') as f:
+            np.save(f, self.region_coarse_similarity)
     
     def get_data_torch(self):
         print("reading poi data")
@@ -86,6 +95,7 @@ class Preprocess():
 
         print("creating region similarity by cosine similarity of embeddings")
         self._get_coarse_region_similarity()
+        
         data = {}
         data['node_features'] = self.embedding_array
         data['edge_index'] = self.edges[["source", "target"]].T.values
@@ -104,6 +114,9 @@ if __name__ == "__main__":
     pre = Preprocess(pois_filename, boroughs_filename, edges_filename, emb_filename)
     data = pre.get_data_torch()
     print(data)
-    torch.save(data, "../data/ny_hgi_data.pkl")
+
+    with open("../data/ny_hgi_data.pkl", "wb") as f:
+        pkl.dump(data, f)
+
     print("Data saved to ../data/ny_hgi_data.pkl")
 

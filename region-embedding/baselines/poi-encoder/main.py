@@ -30,11 +30,6 @@ def poi_category_embedding():
 
     return data, emb_model
 
-def postprocess(regions, poi_embedding):
-    # Postprocess
-    pass
-
-
 def main():
 
     batch_size = 2048
@@ -67,5 +62,6 @@ def main():
 
 
 if __name__ == '__main__':
+    preprocess()
+    poi2vec_train()
     main()
-    

@@ -7,7 +7,7 @@ import os
 def hgi_graph(city_name='shenzhen'):
     """the function hgi_graph() returns a Data object of the city graph.
     Note that the data file should be put under the directory ../data/"""
-    city_dict_file = f'../data/{city_name}_data.pkl'
+    city_dict_file = f'./data/{city_name}_hgi_data.pkl'
     with open(city_dict_file, 'rb') as handle:
         city_dict = pkl.load(handle)
     poi_graph = Data(x=torch.tensor(city_dict['node_features'], dtype=torch.float32),

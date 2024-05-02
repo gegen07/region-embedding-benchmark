@@ -37,6 +37,12 @@ class QuackosmData():
 
         parquet_table = io.read_geoparquet_table(gpq_path)
         write_table(parquet_table, parquet_file)
+    
+    def _convert_to_geopandas(self, parquet_file):
+        df = pd.read_parquet(parquet_file)
+        gdf = geopandas.GeoDataFrame(df, geometry=df[GEOMETRY_COLUMN].apply(wkb.loads))
+
+        return gdf
 
     def get_pois_osm(self, tags_filter=None):
         print('reading pois')
@@ -48,8 +54,7 @@ class QuackosmData():
 
         print('filtering pois')
             
-        df = pd.read_parquet(parquet_file)
-        gdf = geopandas.GeoDataFrame(df, geometry=df["geometry"].apply(wkb.loads))
+        gdf = self._convert_to_geopandas(parquet_file)
 
         tags_first_level_list = list(tags_filter.keys())
 
@@ -81,10 +86,26 @@ class QuackosmData():
             self._reader(parquet_file, highways_filter)
 
         print('filtering streets')
-        df = pd.read_parquet(parquet_file)
-        gdf = geopandas.GeoDataFrame(df, geometry=df["geometry"].apply(wkb.loads))
+        
+        gdf = self._convert_to_geopandas(parquet_file)
 
         gdf.to_csv(os.path.join(self.output_path, f"{self.name}-streets.csv.gz"), index=False)
+
+        return gdf
+    
+    def get_buildings(self,):
+        buildings_filter = {"building": True}
+
+        parquet_file = os.path.join(self.output_path, f"{self.name}-buildings.parquet")
+
+        if not os.path.exists(parquet_file):
+            print('reading buildings')
+            self._reader(parquet_file, buildings_filter)
+
+        print('filtering buildings')
+        gdf = self._convert_to_geopandas(parquet_file)
+
+        gdf.to_csv(os.path.join(self.output_path, f"{self.name}-buildings.csv.gz"), index=False)
 
         return gdf
 
@@ -93,11 +114,14 @@ def main():
     from filters import HEX2VEC_FILTER, REDUCED_FILTER
     quack = QuackosmData("/media/gegen07/Expansion/data/mestrado/region-embedding/new-york-latest.osm.pbf")
     
-    pois = quack.get_pois_osm(HEX2VEC_FILTER)
-    print(pois.head())
+    pois = quack.get_pois_osm(REDUCED_FILTER)
+    print(len(pois))
     
     streets = quack.get_streets_osm()
     print(streets.head())
+
+    buildings = quack.get_buildings()
+    print(buildings.head())
 
 if __name__ == "__main__":
     main()
