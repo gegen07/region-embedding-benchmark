@@ -16,6 +16,9 @@ from torch_geometric.nn import Node2Vec
 from sklearn.preprocessing import LabelEncoder
 import geo_functions as geo
 
+from libpysal import weights
+from libpysal.cg import voronoi_frames
+
 
 class Util:
     def __init__(self) -> None:
@@ -66,28 +69,26 @@ class PreProcess:
         self.pois["fclass"] = self.second_level.fit_transform(self.pois["fclass"].values)
 
     def create_graph(self):  
-        points = np.array(self.pois.geometry.apply(lambda x: [x.x, x.y]).tolist())
+
         D = Util.diagonal_length_min_box(self.pois.geometry.unary_union.envelope.bounds)
 
-        triangles = scipy.spatial.Delaunay(points).simplices
-
-        self.G = nx.Graph()
-        self.G.add_nodes_from(range(len(points)))
-
-        from itertools import combinations
-
-        for simplex in triangles:
-            comb = combinations(simplex, 2)
-            for x, y in comb:
-                if not self.G.has_edge(x, y):
-                    dist = geo.haversine_np(*points[x], *points[y])
-                    w1 = np.log((1+D**(3/2))/(1+dist**(3/2)))
-                    w2 = Util.intra_inter_region_transition(self.pois.iloc[x], self.pois.iloc[y])
-                    self.G.add_edge(x, y, weight=w1*w2)
-        for i in range(len(points)):
-            self.G.nodes[i]["id"] = i
-
-        self.edges = nx.to_pandas_edgelist(self.G)
+        coordinates = np.column_stack((self.pois.geometry.x, self.pois.geometry.y))
+        cells, generators = voronoi_frames(coordinates, clip="extent")
+        delaunay = weights.Rook.from_dataframe(cells)
+        G = delaunay.to_networkx()
+        positions = dict(zip(G.nodes, coordinates))
+       
+        for edges in G.edges:
+            x, y = edges
+            dist = Util.haversine_np(*positions[x], *positions[y])
+            w1 = np.log((1+D**(3/2))/(1+dist**(3/2)))
+            w2 = Util.intra_inter_region_transition(self.pois.iloc[x], self.pois.iloc[y])
+            G[x][y]['weight'] = w1*w2
+        
+        self.edges = nx.to_pandas_edgelist(G)
+        mi = self.edges['weight'].min()
+        ma = self.edges['weight'].max()
+        self.edges['weight'] = self.edges['weight'].apply(lambda x: (x-mi)/(ma-mi))
     
     def save_data(self):
         self.pois.to_csv('./data/pois.csv', index=False)

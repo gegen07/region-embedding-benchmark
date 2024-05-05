@@ -34,7 +34,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 zone_list = []
 
 ground_truth_file = "./data/nyc-landuse.csv"
-region_embedding_file = '../../baselines/poi-encoder/data/region_embedding.csv'
+region_embedding_file = '../../baselines/regionDCL/data/region_embedding.csv'
 
 column_id = 'BoroCT2020'
 # column_id = 'region_id'
@@ -106,7 +106,7 @@ def test(loader):
            chebyshev_distance/len(loader.dataset), cos_dist/len(loader.dataset)
 
 
-training_batch_size = 8
+training_batch_size = 32
 
 train_len = int(len(function_zone_dataset) // 10 * 8)
 test_len = len(function_zone_dataset) - train_len
@@ -116,9 +116,9 @@ test_loader = DataLoader(test_set, batch_size=1, shuffle=False, num_workers=0)
 train_loader = DataLoader(train_set, batch_size=training_batch_size, shuffle=False, num_workers=0)
 
 model = Net().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
 
-for epoch in range(100):
+for epoch in range(200):
 
     loss, p_a = train()
     test_error, canberra_dist, kl_dist, chebyshev_distance, cos_dist = test(test_loader)

@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--dim', type=int, default=64, help='Dimension of output representation')
     parser.add_argument('--alpha', type=float, default=0.5, help='the hyperparameter to balance mutual information')
     parser.add_argument('--attention_head', type=int, default=4)
-    parser.add_argument('--lr', type=float, default=0.006)
+    parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--max_norm', type=float, default=0.9)
     parser.add_argument('--gamma', type=float, default=1)
     parser.add_argument('--warmup_period', type=int, default=40)
@@ -54,11 +54,12 @@ if __name__ == '__main__':
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma, verbose=False)
 
 
-    def train():
+    def train(epoch):
         model.train()
         optimizer.zero_grad()
         pos_poi_emb_list, neg_poi_emb_list, region_emb, neg_region_emb, city_emb = model(data)
         loss = model.loss(pos_poi_emb_list, neg_poi_emb_list, region_emb, neg_region_emb, city_emb)
+        print(loss.item())
         loss.backward()
         clip_grad_norm_(model.parameters(), max_norm=args.max_norm)
         optimizer.step()
@@ -70,12 +71,13 @@ if __name__ == '__main__':
     lowest_loss = math.inf
     region_emb_to_save = torch.FloatTensor(0)
     for epoch in t:
-        loss = train()
+        loss = train(epoch)
         if loss < lowest_loss:
             """save the embeddings with the lowest loss"""
             region_emb_to_save = model.get_region_emb()
             lowest_loss = loss
         t.set_postfix(loss='{:.4f}'.format(loss), refresh=True)
+
     torch.save(region_emb_to_save, f'./data/{args.save_name}.torch')
     print(f"Region embeddings of {args.city} has been save to ./data/{args.save_name}")
 

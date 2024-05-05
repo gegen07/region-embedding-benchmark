@@ -1,20 +1,20 @@
 import torch
 import torch.nn as nn
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, GATConv
 from model.set_transformer import PMA
 from torch_geometric.nn.inits import reset, uniform
 import random
 
 
-EPS = 1e-15
+EPS = 1e-7
 
 
 class POIEncoder(nn.Module):
     """POI GCN encoder"""
     def __init__(self, in_channels, hidden_channels):
         super(POIEncoder, self).__init__()
-        self.conv = GCNConv(in_channels, hidden_channels, cached=True, bias=True)
-        self.prelu = nn.PReLU(hidden_channels)
+        self.conv = GCNConv(in_channels, hidden_channels, cached=False, bias=True)
+        self.prelu = nn.PReLU()
 
     def forward(self, x, edge_index, edge_weight):
         x = self.conv(x, edge_index, edge_weight)
@@ -27,16 +27,18 @@ class POI2Region(nn.Module):
     def __init__(self, hidden_channels, num_heads):
         super(POI2Region, self).__init__()
         self.PMA = PMA(dim=hidden_channels, num_heads=num_heads, num_seeds=1, ln=False)
-        self.conv = GCNConv(hidden_channels, hidden_channels, cached=True, bias=True)
-        self.prelu = nn.PReLU(hidden_channels)
+        self.conv = GCNConv(hidden_channels, hidden_channels, cached=False, bias=True)
+        self.prelu = nn.PReLU()
 
     def forward(self, x, zone, region_adjacency):
         region_emb = x.new_zeros((zone.max()+1, x.size()[1]))
         for index in range(zone.max() + 1):
             poi_index_in_region = (zone == index).nonzero(as_tuple=True)[0]
             region_emb[index] = self.PMA(x[poi_index_in_region].unsqueeze(0)).squeeze()
+        
         region_emb = self.conv(region_emb, region_adjacency)
         region_emb = self.prelu(region_emb)
+        region_emb = torch.nan_to_num(region_emb, nan=0.0)
         return region_emb
 
 
@@ -81,6 +83,7 @@ class HierarchicalGraphInfomax(torch.nn.Module):
         """hard negative sampling procedure"""
         for region in range(torch.max(data.region_id)+1):
             id_of_poi_in_a_region = (data.region_id == region).nonzero(as_tuple=True)[0]
+
             poi_emb_of_a_region = pos_poi_emb[id_of_poi_in_a_region]
             hard_negative_choice = random.random()
             if hard_negative_choice < 0.25:
