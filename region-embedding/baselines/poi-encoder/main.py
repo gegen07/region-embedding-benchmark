@@ -8,7 +8,7 @@ def preprocess():
     # Preprocess
     filename_boroughs = '../../data/cta_nyc.csv'
     filename_pois = '../../data/new-york-pois.csv.gz'
-    PreProcess(filename_pois, filename_boroughs).run() # Add the path to the POI and boroughs data here
+    PreProcess(filename_pois, filename_boroughs, h3=True).run() # Add the path to the POI and boroughs data here
 
 def poi2vec_train():
     poi2vec = POI2Vec()

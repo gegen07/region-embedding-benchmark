@@ -33,11 +33,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 zone_list = []
 
-ground_truth_file = "./data/nyc-landuse.csv"
-region_embedding_file = '../../baselines/regionDCL/data/region_embedding.csv'
+ground_truth_file = "./data/nyc-landuse-res-9.csv"
+region_embedding_file = '../../baselines/poi-encoder/data/region_embedding.csv'
 
-column_id = 'BoroCT2020'
-# column_id = 'region_id'
+# column_id = 'BoroCT2020'
+column_id = 'region_id'
 
 function_zone_dataset = FunctionZoneDataset(region_embedding_file, ground_truth_file, column_id)
 
@@ -106,7 +106,7 @@ def test(loader):
            chebyshev_distance/len(loader.dataset), cos_dist/len(loader.dataset)
 
 
-training_batch_size = 32
+training_batch_size = 16
 
 train_len = int(len(function_zone_dataset) // 10 * 8)
 test_len = len(function_zone_dataset) - train_len

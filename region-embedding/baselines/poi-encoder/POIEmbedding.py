@@ -20,6 +20,8 @@ from libpysal import weights
 from libpysal.cg import voronoi_frames
 
 
+COLUMN_INDEX = "GEOID"
+
 class Util:
     def __init__(self) -> None:
         pass
@@ -37,17 +39,18 @@ class Util:
         return np.sqrt(dist12**2 + dist23**2)
 
     @staticmethod
-    def intra_inter_region_transition(poi1, poi2):
-        if poi1["GEOID"] == poi2["GEOID"]:
+    def intra_inter_region_transition(poi1, poi2, column=COLUMN_INDEX):
+        if poi1[column] == poi2[column]:
             return 1
         else:
             return 0.5
         
 
 class PreProcess:
-    def __init__(self, filename_pois, filename_boroughs):
+    def __init__(self, filename_pois, filename_boroughs, h3=False):
         self.filename_pois = filename_pois
         self.filename_boroughs = filename_boroughs
+        self.h3 = h3
 
     def read_poi_data(self):
         self.pois = pd.read_csv(self.filename_pois)
@@ -62,13 +65,20 @@ class PreProcess:
         self.boroughs["geometry"] = self.boroughs["geometry"].apply(wkt.loads)
         self.boroughs = gpd.GeoDataFrame(self.boroughs, geometry="geometry", crs="EPSG:4326")
 
+        if self.h3:
+            self.boroughs = geo.H3Interpolation(self.boroughs).interpolate(9)
+        print(self.boroughs)
+
     def encode_categories(self):
         first_level = LabelEncoder()
         self.second_level = LabelEncoder()
         self.pois["category"] = first_level.fit_transform(self.pois["category"].values)
         self.pois["fclass"] = self.second_level.fit_transform(self.pois["fclass"].values)
 
-    def create_graph(self):  
+    def create_graph(self):
+
+        if self.h3:
+            column = "h3"
 
         D = Util.diagonal_length_min_box(self.pois.geometry.unary_union.envelope.bounds)
 
@@ -80,9 +90,9 @@ class PreProcess:
        
         for edges in G.edges:
             x, y = edges
-            dist = Util.haversine_np(*positions[x], *positions[y])
+            dist = geo.haversine_np(*positions[x], *positions[y])
             w1 = np.log((1+D**(3/2))/(1+dist**(3/2)))
-            w2 = Util.intra_inter_region_transition(self.pois.iloc[x], self.pois.iloc[y])
+            w2 = Util.intra_inter_region_transition(self.pois.iloc[x], self.pois.iloc[y], column)
             G[x][y]['weight'] = w1*w2
         
         self.edges = nx.to_pandas_edgelist(G)
@@ -109,6 +119,7 @@ class POI2Vec:
             self.pois = gpd.GeoDataFrame(self.pois, geometry="geometry", crs="EPSG:4326")
 
             self.edges = pd.read_csv("./data/edges.csv")
+            print(self.edges)
         else:
             raise FileNotFoundError("Files not found. Run Preprocess first.")
         
