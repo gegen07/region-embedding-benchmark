@@ -45,8 +45,8 @@ class EmbeddingModel(nn.Module):
         self.embed_size = embed_size
         self.le_lambda = torch.tensor(le_lambda).to(self.device)
         self.second_class_hierarchy_pairs = torch.tensor(second_class_hierarchy_pairs).to(self.device)
-        self.in_embed = nn.Embedding(self.vocab_size, self.embed_size)
-        self.out_embed = nn.Embedding(self.vocab_size, self.embed_size)
+        self.in_embed = nn.Embedding(self.vocab_size, self.embed_size, device=self.device)
+        self.out_embed = nn.Embedding(self.vocab_size, self.embed_size, device=self.device)
 
     def forward(self, input_labels, pos_labels, neg_labels):
         """ input_labels: center words, [batch_size]
