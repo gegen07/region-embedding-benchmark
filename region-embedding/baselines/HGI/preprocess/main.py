@@ -95,20 +95,27 @@ class Preprocess():
             self.edges = pd.read_csv('../data/edges.csv')
             return
 
+        points = np.array(self.pois.geometry.apply(lambda x: [x.x, x.y]).tolist())
         D = Util.diagonal_length_min_box(self.pois.geometry.unary_union.envelope.bounds)
 
-        coordinates = np.column_stack((self.pois.geometry.x, self.pois.geometry.y))
-        cells, generators = voronoi_frames(coordinates, clip="extent")
-        delaunay = weights.Rook.from_dataframe(cells)
-        G = delaunay.to_networkx()
-        positions = dict(zip(G.nodes, coordinates))
-       
-        for edges in G.edges:
-            x, y = edges
-            dist = Util.haversine_np(*positions[x], *positions[y])
-            w1 = np.log((1+D**(3/2))/(1+dist**(3/2)))
-            w2 = Util.intra_inter_region_transition(self.pois.iloc[x], self.pois.iloc[y])
-            G[x][y]['weight'] = w1*w2
+        triangles = scipy.spatial.Delaunay(points, qhull_options="QJ QbB Pp").simplices
+
+        G = nx.Graph()
+        G.add_nodes_from(range(len(points)))
+
+        from itertools import combinations
+
+        for simplex in triangles:
+            comb = combinations(simplex, 2)
+            for x, y in comb:
+                if not G.has_edge(x, y):
+                    dist = Util.haversine_np(*points[x], *points[y])
+                    w1 = np.log((1+D**(3/2))/(1+dist**(3/2)))
+                    w2 = Util.intra_inter_region_transition(
+                        self.pois.iloc[x], 
+                        self.pois.iloc[y],
+                    )
+                    G.add_edge(x, y, weight=w1*w2)
         
         self.edges = nx.to_pandas_edgelist(G)
         mi = self.edges['weight'].min()
