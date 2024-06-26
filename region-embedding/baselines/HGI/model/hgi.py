@@ -60,6 +60,7 @@ class HierarchicalGraphInfomax(torch.nn.Module):
         self.weight_poi2region = nn.Parameter(torch.Tensor(hidden_channels, hidden_channels))
         self.weight_region2city = nn.Parameter(torch.Tensor(hidden_channels, hidden_channels))
         self.region_embedding = torch.tensor(0)
+        self.poi_embedding = torch.tensor(0)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -75,6 +76,7 @@ class HierarchicalGraphInfomax(torch.nn.Module):
         cor_x = self.corruption(data.x)
         neg_poi_emb = self.poi_encoder(cor_x, data.edge_index, data.edge_weight)
         region_emb = self.poi2region(pos_poi_emb, data.region_id, data.region_adjacency)
+        self.poi_embedding = pos_poi_emb
         self.region_embedding = region_emb
         neg_region_emb = self.poi2region(neg_poi_emb, data.region_id, data.region_adjacency)
         city_emb = self.region2city(region_emb, data.region_area)
@@ -104,7 +106,9 @@ class HierarchicalGraphInfomax(torch.nn.Module):
         values = []
         for region_id, region in enumerate(poi_emb_list):
             if region.size()[0] > 0:
+                # print(region.shape)
                 region_summary = region_emb[region_id]
+                # print(torch.matmul(self.weight_poi2region, region_summary).shape)
                 value = torch.matmul(region, torch.matmul(self.weight_poi2region, region_summary))
                 values.append(value)
         values = torch.cat(values, dim=0)
@@ -132,4 +136,4 @@ class HierarchicalGraphInfomax(torch.nn.Module):
         return '{}({})'.format(self.__class__.__name__, self.hidden_channels)
 
     def get_region_emb(self):
-        return self.region_embedding.clone().cpu().detach()
+        return (self.region_embedding.clone().cpu().detach(), self.poi_embedding.clone().cpu().detach())

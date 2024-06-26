@@ -29,4 +29,4 @@ def main(h3=False):
     region.to_parquet('./data/region_embedding.parquet', index=False)
     
 if __name__ == "__main__":
-    main(h3=True)
+    main(h3=False)

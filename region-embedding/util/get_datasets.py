@@ -112,16 +112,16 @@ class QuackosmData():
 
 def main():
     from filters import HEX2VEC_FILTER, REDUCED_FILTER
-    quack = QuackosmData("/media/gegen07/Expansion/data/mestrado/region-embedding/new-york-latest.osm.pbf", region_name="New York City, United States")
+    quack = QuackosmData("/media/gegen07/Expansion/data/mestrado/region-embedding/new-york-latest.osm.pbf", region_name=", United States")
     
     pois = quack.get_pois_osm(REDUCED_FILTER)
     print(len(pois))
     
-    # streets = quack.get_streets_osm()
-    # print(streets.head())
+    streets = quack.get_streets_osm()
+    print(streets.head())
 
-    # buildings = quack.get_buildings()
-    # print(buildings.head())
+    buildings = quack.get_buildings()
+    print(buildings.head())
 
 if __name__ == "__main__":
     main()

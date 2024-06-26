@@ -77,6 +77,7 @@ class PreProcess:
 
     def create_graph(self):
 
+        column = 'BoroCT2020'
         if self.h3:
             column = "h3"
         
@@ -143,10 +144,10 @@ class POI2Vec:
         self.model = Node2Vec(
             self.data.edge_index,
             embedding_dim=64,
-            walk_length=7,
+            walk_length=10,
             context_size=5,
-            walks_per_node=1,
-            num_negative_samples=1,
+            walks_per_node=5,
+            num_negative_samples=2,
             p=0.5,
             q=0.5,
             sparse=True,

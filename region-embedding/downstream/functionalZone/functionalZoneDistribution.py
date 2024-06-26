@@ -24,7 +24,7 @@ class FunctionZoneDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        features = self.features.iloc[idx, 1:].values.flatten().astype('float32')
+        features = self.features.iloc[idx, 0:64].values.flatten().astype('float32')
         labels = self.labels.iloc[idx, 1:].values.flatten().astype('float32')
 
         return {'features': torch.from_numpy(features), 'labels': torch.from_numpy(labels)}
@@ -33,11 +33,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 zone_list = []
 
-ground_truth_file = "./data/nyc-landuse-res-9.csv"
-region_embedding_file = '../../baselines/poi-encoder/data/region_embedding.csv'
+ground_truth_file = "./data/nyc-landuse-5-classes.csv"
+region_embedding_file = '/home/gegen07/dev/projects/region-embedding-benchmark/region-embedding/baselines/HGI/data/region_embedding.csv'
+# region_embedding_file = '/home/gegen07/dev/projects/region-embedding-benchmark/region-embedding/model/data/region_embedding-info-nce.csv'
 
-# column_id = 'BoroCT2020'
-column_id = 'region_id'
+column_id = 'BoroCT2020'
+# column_id = 'region_id'
 
 function_zone_dataset = FunctionZoneDataset(region_embedding_file, ground_truth_file, column_id)
 
@@ -49,7 +50,7 @@ class Net(torch.nn.Module):
         self.net = torch.nn.Sequential(
             torch.nn.Linear(embedding_size, 512),
             torch.nn.Sigmoid(),
-            torch.nn.Linear(512, 11),
+            torch.nn.Linear(512, 5),
             torch.nn.Softmax(dim=-1)
         )
 
@@ -71,7 +72,7 @@ def train():
 
         y_estimated = model(features)
 
-        loss = F.kl_div(torch.log(y_estimated.reshape((-1, 11))), label.reshape((-1, 11)).float(), 
+        loss = F.kl_div(torch.log(y_estimated.reshape((-1, 5))), label.reshape((-1, 5)).float(), 
                         reduction='batchmean').float()
         p_a += (y_estimated - label.reshape(-1)).abs().sum()
         loss.backward()
@@ -97,7 +98,7 @@ def test(loader):
         error += ((y_estimated - label).abs().sum())
         
         canberra_distance += canberra(y_estimated.cpu().detach().numpy(), label.reshape(-1).cpu().detach().numpy())
-        kl_dist += F.kl_div(torch.log(y_estimated.reshape((-1, 11))), label.reshape((-1, 11)).float(),
+        kl_dist += F.kl_div(torch.log(y_estimated.reshape((-1, 5))), label.reshape((-1, 5)).float(),
                             reduction='batchmean').float()
         chebyshev_distance += chebyshev(y_estimated.cpu().detach().numpy(), label.reshape(-1).cpu().detach().numpy())
         cos = torch.nn.CosineSimilarity(dim=0, eps=1e-6)

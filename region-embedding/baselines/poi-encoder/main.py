@@ -8,7 +8,7 @@ def preprocess():
     # Preprocess
     filename_boroughs = '../../data/cta_nyc.csv'
     filename_pois = '../../data/new-york-pois.csv.gz'
-    PreProcess(filename_pois, filename_boroughs, h3=True).run() # Add the path to the POI and boroughs data here
+    PreProcess(filename_pois, filename_boroughs, h3=False).run() # Add the path to the POI and boroughs data here
 
 def poi2vec_train():
     poi2vec = POI2Vec()
@@ -35,6 +35,7 @@ def main():
     batch_size = 2048
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(device)
 
     dataset, model = poi_category_embedding()
 
@@ -58,10 +59,10 @@ def main():
                 print('epoch', e, 'iteration', i, loss.item(), 'loss_le', loss_le.item())
 
     # embedding_weights = model.input_embedding()
-    torch.save(model.state_dict(), "./data/poi-encoder.tensor")
+    # torch.save(model.state_dict(), "./data/poi-encoder.tensor")
 
 
 if __name__ == '__main__':
     preprocess()
-    poi2vec_train()
-    main()
+    # poi2vec_train()
+    # main()

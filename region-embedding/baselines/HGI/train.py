@@ -78,7 +78,8 @@ if __name__ == '__main__':
             lowest_loss = loss
         t.set_postfix(loss='{:.4f}'.format(loss), refresh=True)
 
-    torch.save(region_emb_to_save, f'./data/{args.save_name}.torch')
+    torch.save(region_emb_to_save[0], f'./data/{args.save_name}.torch')
+    torch.save(region_emb_to_save[1], './data/poi_embedding.torch')
     print(f"Region embeddings of {args.city} has been save to ./data/{args.save_name}")
 
 
