@@ -76,10 +76,12 @@ class QuackosmData():
                 "primary",
                 "secondary",
                 "tertiary",
+                "residential",
+                "unclassified",
             ]
         }
 
-        parquet_file = os.path.join(self.output_path, f"{self.name}-streets.parquet")
+        parquet_file = os.path.join(self.output_path, f"{self.name}-streets-complete.parquet")
 
         if not os.path.exists(parquet_file):
             print('reading streets')
@@ -89,7 +91,7 @@ class QuackosmData():
         
         gdf = self._convert_to_geopandas(parquet_file)
 
-        gdf.to_csv(os.path.join(self.output_path, f"{self.name}-streets.csv.gz"), index=False)
+        gdf.to_csv(os.path.join(self.output_path, f"{self.name}-streets-complete.csv.gz"), index=False)
 
         return gdf
     
@@ -112,16 +114,16 @@ class QuackosmData():
 
 def main():
     from filters import HEX2VEC_FILTER, REDUCED_FILTER
-    quack = QuackosmData("/media/gegen07/Expansion/data/mestrado/region-embedding/new-york-latest.osm.pbf", region_name=", United States")
+    quack = QuackosmData("/media/gegen07/Expansion/data/mestrado/region-embedding/new-york-latest.osm.pbf", region_name="New York City, United States")
     
-    pois = quack.get_pois_osm(REDUCED_FILTER)
-    print(len(pois))
+    # pois = quack.get_pois_osm(REDUCED_FILTER)
+    # print(len(pois))
     
     streets = quack.get_streets_osm()
     print(streets.head())
 
-    buildings = quack.get_buildings()
-    print(buildings.head())
+    # buildings = quack.get_buildings()
+    # print(buildings.head())
 
 if __name__ == "__main__":
     main()

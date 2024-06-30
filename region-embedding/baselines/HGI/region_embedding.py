@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from collections import defaultdict
 def main():
-    embeddings = torch.load('./data/ny.torch').numpy()
+    embeddings = torch.load('./data/ny_emb-best.torch').numpy()
     cta = pd.read_csv('../../data/cta_nyc.csv')
     
     emb_df = pd.DataFrame(embeddings)
