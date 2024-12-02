@@ -26,7 +26,7 @@ def get_landuse_default():
     count[columns[:-1]].to_csv('./data/nyc-landuse.csv')
 
 def get_landuse_h3(resolution=9):
-    df = pd.read_csv('./data/catagory-buildings.csv.gz') ## borough, landuse, latitude, longitude
+    df = pd.read_csv('./data/category-buildings.csv.gz') ## borough, landuse, latitude, longitude
 
     gdf_buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
     gdf_buildings = gdf_buildings.dropna(axis=0, subset=['latitude', 'longitude', 'landuse'])

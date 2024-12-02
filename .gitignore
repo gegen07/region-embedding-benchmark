@@ -1,6 +1,9 @@
 ## Files
 *.csv
 *.pkl
+*.pickle
+*.torch
+*.pt
 *.csv.gz
 *.parquet
 *.geoparquet
@@ -16,10 +19,29 @@
 **/osmconvert
 **/cache/*
 **/lightning_logs/*
+
+**/regionDCL/data/embeddings/**
+!**/regionDCL/data/embeddings/RegionDCL_10-chicago.pkl
+!**/regionDCL/data/embeddings/RegionDCL_10-h3-chicago.pkl
+!**/regionDCL/data/embeddings/RegionDCL_10-h3-nyc.pkl
+!**/regionDCL/data/embeddings/RegionDCL_10.pkl
+**/regionDCL/data/processed/**
+**/regionDCL/data/raw/**
+
+!**/DGI/notebooks/*.csv
+!**/GAE/notebooks/*.csv
+
 !**/region_embedding.csv
 !**/ny_geovex_emb.csv
 !**/ny_hex2vec_emb.csv
 
+**/catboost_info/**
+!**/functionalZone/data/nyc-landuse-area-11-classes.csv
+!**/functionalZone/data/chicago-landuse-area-9-classes-geoid.csv
+!**/crime-prediction/data/crime_number-manhattan.csv
+!**/crime-prediction/data/crime-number-central-area.csv
+!**/population-density/data/chicago_population.csv
+!**/population-density/data/nyc_population.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

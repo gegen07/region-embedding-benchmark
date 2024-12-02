@@ -59,7 +59,7 @@ def main():
                 print('epoch', e, 'iteration', i, loss.item(), 'loss_le', loss_le.item())
 
     # embedding_weights = model.input_embedding()
-    # torch.save(model.state_dict(), "./data/poi-encoder.tensor")
+    # torch.save(model.state_dict(), "./data/poi-encoder-chicago.tensor")
 
 
 if __name__ == '__main__':

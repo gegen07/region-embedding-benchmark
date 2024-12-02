@@ -104,12 +104,14 @@ class HierarchicalGraphInfomax(torch.nn.Module):
 
     def discriminate_poi2region(self, poi_emb_list, region_emb, sigmoid=True):
         values = []
+        print(self.weight_poi2region, self.weight_region2city)
         for region_id, region in enumerate(poi_emb_list):
             if region.size()[0] > 0:
                 # print(region.shape)
                 region_summary = region_emb[region_id]
-                # print(torch.matmul(self.weight_poi2region, region_summary).shape)
+                # print(torch.matmul(self.weight_poi2region, region_summary))
                 value = torch.matmul(region, torch.matmul(self.weight_poi2region, region_summary))
+                # print(value)
                 values.append(value)
         values = torch.cat(values, dim=0)
         return torch.sigmoid(values) if sigmoid else values

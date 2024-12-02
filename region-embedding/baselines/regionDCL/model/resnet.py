@@ -76,13 +76,13 @@ class ResNet(torch.nn.Module):
 
 class SimCLRTrainer(object):
     def __init__(self, ):
-        self.data = ImageDataset()
+        # self.data = ImageDataset()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = ResNet().to(self.device)
         self.criterion = self.infonce_loss
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0001)
-        self.train_loader = torch.utils.data.DataLoader(self.data, batch_size=128, shuffle=True, collate_fn=ImageDataset.collate_fn_augmentation)
-        self.test_loader = torch.utils.data.DataLoader(self.data, batch_size=128, shuffle=False, collate_fn=ImageDataset.collate_fn_embed)
+        # self.train_loader = torch.utils.data.DataLoader(self.data, batch_size=128, shuffle=True, collate_fn=ImageDataset.collate_fn_augmentation)
+        # self.test_loader = torch.utils.data.DataLoader(self.data, batch_size=128, shuffle=False, collate_fn=ImageDataset.collate_fn_embed)
 
     def train(self, epochs):
         self.model.train()

@@ -5,6 +5,12 @@ import scipy
 import matplotlib.pyplot as plt
 from shapely import wkt
 import networkx as nx
+import h3
+from h3ronpy.arrow import cells_to_string, grid_disk
+from h3ronpy.arrow.vector import ContainmentMode, cells_to_wkb_polygons, wkb_to_cells
+from shapely.geometry import Polygon
+from shapely.geometry.base import BaseGeometry
+from collections.abc import Iterable
 
 from sklearn.preprocessing import LabelEncoder
 import torch
@@ -13,8 +19,59 @@ import numpy as np
 import pickle as pkl
 import os
 
-from libpysal import weights
-from libpysal.cg import voronoi_frames
+COLUMN_INDEX = "GEOID"
+
+class H3Interpolation():
+
+    def __init__(self, gdf) -> None:
+        self.gdf = gdf 
+    
+    def _shapely_geometry_to_h3(
+        self,
+        geometry,
+        h3_resolution: int,
+        buffer: bool = True,
+    ) -> list[str]:
+        if not (0 <= h3_resolution <= 15):
+            raise ValueError(f"Resolution {h3_resolution} is not between 0 and 15.")
+
+        wkb = []
+        if isinstance(geometry, gpd.GeoSeries):
+            wkb = geometry.to_wkb()
+        elif isinstance(geometry, gpd.GeoDataFrame):
+            wkb = geometry['geometry'].to_wkb()
+        elif isinstance(geometry, Iterable):
+            wkb = [sub_geometry.wkb for sub_geometry in geometry]
+        else:
+            wkb = [geometry.wkb]
+
+        containment_mode = (
+            ContainmentMode.IntersectsBoundary if buffer else ContainmentMode.ContainsCentroid
+        )
+        h3_indexes = wkb_to_cells(
+            wkb, resolution=h3_resolution, containment_mode=containment_mode, flatten=True
+        ).unique()
+
+        return [h3.int_to_str(h3_index) for h3_index in h3_indexes.tolist()]
+
+    def _h3_to_geoseries(self, h3_index):
+        if isinstance(h3_index, (str, int)):
+            return self.h3_to_geoseries([h3_index])
+        else:
+            h3_int_indexes = (
+                h3_cell if isinstance(h3_cell, int) else h3.str_to_int(h3_cell) for h3_cell in h3_index
+            )
+            return gpd.GeoSeries.from_wkb(cells_to_wkb_polygons(h3_int_indexes), crs=4326)
+    
+    def interpolate(self, h3_resolution: int = 9, buffer: bool = True):
+        self.gdf = self.gdf.explode(index_parts=True).reset_index(drop=True)
+        h3_list = list(set(self._shapely_geometry_to_h3(self.gdf['geometry'], h3_resolution)))
+
+        return gpd.GeoDataFrame(
+            data={"h3": h3_list},
+            geometry=self._h3_to_geoseries(h3_list),
+            crs=4326,
+        )
 
 class Util:
     def __init__(self) -> None:
@@ -53,17 +110,18 @@ class Util:
         return np.sqrt(dist12**2 + dist23**2)
 
     @staticmethod
-    def intra_inter_region_transition(poi1, poi2):
-        if poi1["GEOID"] == poi2["GEOID"]:
+    def intra_inter_region_transition(poi1, poi2, column=COLUMN_INDEX):
+        if poi1[column] == poi2[column]:
             return 1
         else:
-            return 0.4
+            return 0.5
 
 class Preprocess():
-    def __init__(self, pois_filename, boroughs_filename, emb_filename) -> None:
+    def __init__(self, pois_filename, boroughs_filename, emb_filename, h3=False) -> None:
         self.pois_filename = pois_filename
         self.boroughs_filename = boroughs_filename
         self.embedding_filename = emb_filename
+        self.h3 = h3
 
 
     def _read_poi_data(self):
@@ -71,15 +129,27 @@ class Preprocess():
         self.pois["geometry"] = self.pois["geometry"].apply(wkt.loads)
         self.pois = gpd.GeoDataFrame(self.pois, geometry="geometry", crs="EPSG:4326")
         self.pois["geometry"] = self.pois["geometry"].apply(lambda x: x if x.geom_type == "Point" else x.centroid)
-        self.regions_unique_index = self.pois.index_right.unique().tolist()
+
+        if self.h3:
+          self.regions_unique_index = self.pois.h3.unique().tolist()
+        else:
+          self.regions_unique_index = self.pois.index_right.unique().tolist()
     
     def _read_boroughs_data(self):
         self.boroughs = pd.read_csv(self.boroughs_filename)
         self.boroughs["geometry"] = self.boroughs["geometry"].apply(wkt.loads)
         self.boroughs = gpd.GeoDataFrame(self.boroughs, geometry="geometry", crs="EPSG:4326")
 
-        self.boroughs = self.boroughs[self.boroughs.index.isin(self.regions_unique_index)]
+        if self.h3:
+            self.boroughs = H3Interpolation(self.boroughs).interpolate(8)
+            self.boroughs = self.boroughs[self.boroughs.h3.isin(self.regions_unique_index)]
+            self.boroughs = self.boroughs.drop_duplicates(subset=['h3'], keep='first')
+        else:
+            self.boroughs = self.boroughs[self.boroughs.index.isin(self.regions_unique_index)]
+
         self.boroughs = self.boroughs.reset_index(drop=True)
+
+        self.boroughs.to_csv('/content/chicago_boroughs_h3_to_embeddings.csv', index=False)
 
         self.pois = self.pois[['feature_id', 'category', 'fclass', 'geometry']].sjoin(self.boroughs, how='inner', predicate='intersects')
 
@@ -91,10 +161,15 @@ class Preprocess():
         self.embedding_array = self.pois['embedding'].values.tolist()
 
     def _create_graph(self):
-        if os.path.exists('../data/edges.csv'):
-            self.edges = pd.read_csv('../data/edges.csv')
+        if os.path.exists('/content/edges.csv'):
+            self.edges = pd.read_csv('/content/edges.csv')
             return
 
+        column = 'BoroCT2020'
+        if self.h3:
+            column = "h3"
+
+        print(self.pois)
         points = np.array(self.pois.geometry.apply(lambda x: [x.x, x.y]).tolist())
         D = Util.diagonal_length_min_box(self.pois.geometry.unary_union.envelope.bounds)
 
@@ -114,6 +189,7 @@ class Preprocess():
                     w2 = Util.intra_inter_region_transition(
                         self.pois.iloc[x], 
                         self.pois.iloc[y],
+                        column=column
                     )
                     G.add_edge(x, y, weight=w1*w2)
         
@@ -122,7 +198,7 @@ class Preprocess():
         ma = self.edges['weight'].max()
         self.edges['weight'] = self.edges['weight'].apply(lambda x: (x-mi)/(ma-mi))
 
-        self.edges.to_csv('../data/edges.csv', index=False)
+        self.edges.to_csv('/content/edges.csv', index=False)
     
     def _get_region_adjacency(self):
         import libpysal
@@ -138,28 +214,20 @@ class Preprocess():
     def _get_coarse_region_similarity(self):
         from sklearn.metrics.pairwise import cosine_similarity
 
-        if os.path.exists('../data/region_coarse_similarity.npy'):
-            self.region_coarse_similarity = np.load('../data/region_coarse_similarity.npy')
+        if os.path.exists('/content/region_coarse_similarity.npy'):
+            self.region_coarse_similarity = np.load('/content/region_coarse_similarity.npy')
             return
 
         onehot = self.pois[['index_right', 'fclass']]
         onehot = pd.concat([onehot[['index_right']],pd.get_dummies(onehot['fclass'], dtype=int)], axis=1)
 
-        self.region_coarse_similarity = np.zeros((self.n_regions, self.n_regions))
-        bor = np.unique(onehot.index).tolist()
-        
-        for x in range(self.n_regions):
-            for y in range(self.n_regions):
-                if (x not in bor) or (y not in bor):
-                    sim = 0
-                elif x != y:
-                    sim = cosine_similarity([onehot[onehot.index == x].values[0]], [onehot[onehot.index == y].values[0]])
-                    sim = sim[0][0]
-                else:
-                    sim = 1
-                self.region_coarse_similarity[x, y] = sim
+        arr = onehot.values
 
-        with open('../data/region_coarse_similarity.npy', 'wb') as f:
+        ## Cosine Similarity using arr
+        from sklearn.metrics.pairwise import cosine_similarity
+        self.region_coarse_similarity = cosine_similarity(arr)
+
+        with open('/content/region_coarse_similarity.npy', 'wb') as f:
             np.save(f, self.region_coarse_similarity)
     
     def get_data_torch(self):
@@ -198,16 +266,16 @@ class Preprocess():
         return data
     
 if __name__ == "__main__":
-    pois_filename = "../../poi-encoder/data/pois.csv"
-    boroughs_filename = "../../../data/cta_nyc.csv"
+    pois_filename = "/content/drive/MyDrive/Dados/region-embedding-benchmark/pois.csv"
+    boroughs_filename = "/content/drive/MyDrive/Dados/region-embedding-benchmark/data/chicago/cta_chicago.csv"
     # edges_filename = "../../poi-encoder/data/edges.csv"
-    emb_filename = "../../poi-encoder/data/poi-encoder.tensor"
-    pre = Preprocess(pois_filename, boroughs_filename, emb_filename)
+    emb_filename = "/content/poi-encoder-chicago-h3.tensor"
+    pre = Preprocess(pois_filename, boroughs_filename, emb_filename, h3=True)
     data = pre.get_data_torch()
     # print(data)
 
-    with open("../data/ny_hgi_data.pkl", "wb") as f:
+    with open("/content/ny_hgi_data.pkl", "wb") as f:
         pkl.dump(data, f)
 
-    print("Data saved to ../data/ny_hgi_data.pkl")
+    print("Data saved to /content/ny_hgi_data.pkl")
 
